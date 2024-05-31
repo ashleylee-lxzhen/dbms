@@ -37,7 +37,12 @@ enroll_parser.add_argument('User_PhoneNo', type = int, required=True)
 enroll_parser.add_argument('User_Email', type = str, required=True)
 enroll_parser.add_argument('User_Password', type = str, required=True)
 
+searching_parser = reqparse.RequestParser()
+searching_parser.add_argument('History_ID', type = str, required = True)
+searching_parser.add_argument('History_Keyword', type = str, required = True)
 
+searching_history_parser = reqparse.RequestParser()
+searching_history_parser.add_argument()
 
 
 
@@ -125,6 +130,58 @@ class Enroll(Resource):
                 connection.close()
         else:
             return {"error": "Unable to connect to the database"}, 500
+ 
+@user_ns.route('/search_keyword')
+class SearchKeyword(Resource):
+    @user_ns.expect(searching_parser)
+    def post(self):
+        '''搜索關鍵字並保存搜索歷史'''
+        args = searching_parser.parse_args()
+        User_ID = args['User_ID']
+        History_Keyword = args['History_Keyword']
+
+        connection = create_db_connection()
+        if connection is not None:
+            try:
+                cursor = connection.cursor(dictionary=True)
+                sql_designer = """
+                SELECT * FROM Designer
+                WHERE Designer_Name LIKE %s
+                   OR Special_Skill LIKE %s
+                   OR Portfolio LIKE %s
+                """
+                keyword_pattern = f"%{History_Keyword}%"
+                cursor.execute(sql_designer, (keyword_pattern, keyword_pattern, keyword_pattern))
+                designers = cursor.fetchall()
+
+                sql_hairsalon = """
+                SELECT * FROM Hairsalon
+                WHERE Hairsalon_Name LIKE %s
+                   OR Hairsalon_Keyword LIKE %s
+                """
+                cursor.execute(sql_hairsalon, (keyword_pattern, keyword_pattern))
+                hairsalons = cursor.fetchall()
+
+                sql_history = "INSERT INTO `Searching_History`(`History_ID`, `User_ID`, `History_Keyword`) VALUES (%s,%s,%s)"
+                cursor.execute(sql_history, (User_ID, History_Keyword))
+                connection.commit()
+
+                new_history_id = cursor.lastrowid
+
+                return {
+                    "new_history_id": new_history_id,
+                    "designers": designers,
+                    "hairsalons": hairsalons
+                }, 200
+            except Error as e:
+                return {"error": str(e)}, 500
+            finally:
+                cursor.close()
+                connection.close()
+        else:
+            return {"error": "Unable to connect to the database"}, 500   
+
+        
 
 if __name__ == '__main__':
     app.run(debug=True)
