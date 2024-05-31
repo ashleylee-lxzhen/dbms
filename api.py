@@ -30,6 +30,13 @@ login_parser = reqparse.RequestParser()
 login_parser.add_argument('User_Name', type = str, required=True)
 login_parser.add_argument('User_Password', type = str, required=True)
 
+enroll_parser = reqparse.RequestParser()
+enroll_parser.add_argument('User_ID', type = str, required=True)
+enroll_parser.add_argument('User_Name', type = str, required=True)
+enroll_parser.add_argument('User_PhoneNo', type = int, required=True)
+enroll_parser.add_argument('User_Email', type = str, required=True)
+enroll_parser.add_argument('User_Password', type = str, required=True)
+
 
 
 
@@ -91,5 +98,34 @@ class Login(Resource):
         else:
             return {"error": "Unable to connect to the database"}, 500
 
+@user_ns.route('/enroll')
+class Enroll(Resource):
+    @user_ns.expect(enroll_parser)
+    def post(self):
+        '''註冊'''
+        args = enroll_parser.parse_args()
+        User_ID = args['User_ID']
+        User_Name = args['User_Name']
+        User_PhoneNo = args['User_PhoneNo']
+        User_Email = args['User_Email']
+        User_Password = args['User_Password']
+
+        connection = create_db_connection()
+        if connection is not None:
+            try:
+                cursor = connection.cursor(dictionary=True)
+                sql = "INSERT INTO User (User_ID, User_Name, User_PhoneNo, User_Email, User_Password) VALUES (%s, %s, %s, %s, %s)"
+                cursor.execute(sql, (User_ID, User_Name, User_PhoneNo, User_Email, User_Password))
+                connection.commit()
+                return {"message": "User registered successfully"}, 200
+            except Error as e:
+                return {"error": str(e)}, 500
+            finally:
+                cursor.close()
+                connection.close()
+        else:
+            return {"error": "Unable to connect to the database"}, 500
+
 if __name__ == '__main__':
     app.run(debug=True)
+    
