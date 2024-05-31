@@ -37,14 +37,6 @@ enroll_parser.add_argument('User_PhoneNo', type = int, required=True)
 enroll_parser.add_argument('User_Email', type = str, required=True)
 enroll_parser.add_argument('User_Password', type = str, required=True)
 
-searching_parser = reqparse.RequestParser()
-searching_parser.add_argument('History_ID', type = str, required = True)
-searching_parser.add_argument('History_Keyword', type = str, required = True)
-
-searching_history_parser = reqparse.RequestParser()
-searching_history_parser.add_argument()
-
-
 
 #開一個新的區域
 user_ns = api.namespace('User', description='使用者api')
@@ -130,13 +122,25 @@ class Enroll(Resource):
                 connection.close()
         else:
             return {"error": "Unable to connect to the database"}, 500
- 
+
+search_parser = reqparse.RequestParser()
+search_parser.add_argument('User_ID', type=int, required=True)
+search_parser.add_argument('History_Keyword', type=str, required=True)
+
+def get_max_history_id(connection):
+    cursor = connection.cursor()
+    cursor.execute("SELECT MAX(History_ID) FROM `Searching_History`")
+    result = cursor.fetchone()
+    max_id = result[0] if result[0] is not None else 0
+    cursor.close()
+    return max_id
+
 @user_ns.route('/search_keyword')
 class SearchKeyword(Resource):
-    @user_ns.expect(searching_parser)
+    @user_ns.expect(search_parser)
     def post(self):
         '''搜索關鍵字並保存搜索歷史'''
-        args = searching_parser.parse_args()
+        args = search_parser.parse_args()
         User_ID = args['User_ID']
         History_Keyword = args['History_Keyword']
 
@@ -144,6 +148,8 @@ class SearchKeyword(Resource):
         if connection is not None:
             try:
                 cursor = connection.cursor(dictionary=True)
+                new_history_id = get_max_history_id(connection) + 1
+                print('new_history_id: '+ str(new_history_id))
                 sql_designer = """
                 SELECT * FROM Designer
                 WHERE Designer_Name LIKE %s
@@ -163,13 +169,10 @@ class SearchKeyword(Resource):
                 hairsalons = cursor.fetchall()
 
                 sql_history = "INSERT INTO `Searching_History`(`History_ID`, `User_ID`, `History_Keyword`) VALUES (%s,%s,%s)"
-                cursor.execute(sql_history, (User_ID, History_Keyword))
+                cursor.execute(sql_history, (new_history_id, User_ID, History_Keyword))
                 connection.commit()
 
-                new_history_id = cursor.lastrowid
-
                 return {
-                    "new_history_id": new_history_id,
                     "designers": designers,
                     "hairsalons": hairsalons
                 }, 200
@@ -179,10 +182,7 @@ class SearchKeyword(Resource):
                 cursor.close()
                 connection.close()
         else:
-            return {"error": "Unable to connect to the database"}, 500   
-
+            return {"error": "Unable to connect to the database"}, 500
         
-
 if __name__ == '__main__':
     app.run(debug=True)
-    
