@@ -44,6 +44,12 @@ search_parser.add_argument('History_Keyword', type=str, required=True)
 coupon_parser = reqparse.RequestParser()
 coupon_parser.add_argument('User_ID', type=int, required=True)
 
+designer_search_parser = reqparse.RequestParser()
+designer_search_parser.add_argument('Designer_ID', type=int, required=False)
+designer_search_parser.add_argument('Designer_Name', type=str, required=False)
+
+
+
 #開一個新的區域
 user_ns = api.namespace('User', description='使用者api')
 @user_ns.route('/get_user_from_id')
@@ -213,6 +219,40 @@ class Coupon(Resource):
                     return coupons, 200
                 else:
                     return {"error": "Coupon not found"}, 404
+            except Error as e:
+                return {"error": str(e)}, 500
+            finally:
+                cursor.close()
+                connection.close()
+        else:
+            return {"error": "Unable to connect to the database"}, 500
+
+@user_ns.route('/search_designer')
+class SearchDesigner(Resource):
+    @user_ns.expect(designer_search_parser)
+    def get(self):
+        args = designer_search_parser.parse_args()
+        Designer_ID = args.get('Designer_ID')
+        Designer_Name = args.get('Designer_Name')
+
+        connection = create_db_connection()
+        if connection is not None:
+            try:
+                cursor = connection.cursor(dictionary=True)
+                if Designer_ID:
+                    sql = "SELECT * FROM Designer WHERE Designer_ID = %s"
+                    cursor.execute(sql, (Designer_ID,))
+                elif Designer_Name:
+                    sql = "SELECT * FROM Designer WHERE Designer_Name LIKE %s"
+                    cursor.execute(sql, (f"%{Designer_Name}%",))
+                else:
+                    return {"error": "Designer_ID or Designer_Name must be provided"}, 400
+                
+                designers = cursor.fetchall()
+                if designers:
+                    return designers, 200
+                else:
+                    return {"error": "Designer not found"}, 404
             except Error as e:
                 return {"error": str(e)}, 500
             finally:
