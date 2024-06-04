@@ -48,6 +48,12 @@ designer_search_parser = reqparse.RequestParser()
 designer_search_parser.add_argument('Designer_ID', type=int, required=False)
 designer_search_parser.add_argument('Designer_Name', type=str, required=False)
 
+comment_parser = reqparse.RequestParser()
+comment_parser.add_argument('User_ID', type=int, required=True)
+comment_parser.add_argument('Hairsalon_ID', type=int, required=True)
+comment_parser.add_argument('Score', type=int, required =True)
+comment_parser.add_argument('Comment', type=str, required =False)
+
 
 
 #開一個新的區域
@@ -253,6 +259,46 @@ class SearchDesigner(Resource):
                     return designers, 200
                 else:
                     return {"error": "Designer not found"}, 404
+            except Error as e:
+                return {"error": str(e)}, 500
+            finally:
+                cursor.close()
+                connection.close()
+        else:
+            return {"error": "Unable to connect to the database"}, 500
+
+def get_max_comment_id(connection):
+    cursor = connection.cursor()
+    cursor.execute("SELECT MAX(comment_id) FROM `Comments`")
+    result = cursor.fetchone()
+    max_id = result[0] if result[0] is not None else 0
+    cursor.close()
+    return max_id
+@user_ns.route('/comment')
+class Comment(Resource):
+    @user_ns.expect(comment_parser)
+    def post(self):
+        '''留言'''
+        args = comment_parser.parse_args()
+        User_ID = args['User_ID']
+        Hairsalon_ID = args['Hairsalon_ID']
+        Comment = args['Comment']
+        Score = args['Score']
+
+        connection = create_db_connection()
+        if connection is not None:
+            try:
+                cursor = connection.cursor(dictionary=True)
+                new_comment_id = get_max_comment_id(connection) + 1
+                print('new_comment_id: ' + str(new_comment_id))
+                
+                sql_comment = "INSERT INTO `Comments`(`comment_id`, `User_ID`, `Hairsalon_ID`, `Score`, `Comment`)VALUES (%s, %s, %s, %s, %s)"
+                cursor.execute(sql_comment, (new_comment_id, User_ID, Hairsalon_ID, Score, Comment))
+                connection.commit()
+
+                return {
+                    "comment_id": new_comment_id
+                }, 200
             except Error as e:
                 return {"error": str(e)}, 500
             finally:
