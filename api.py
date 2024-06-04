@@ -37,6 +37,12 @@ enroll_parser.add_argument('User_PhoneNo', type = int, required=True)
 enroll_parser.add_argument('User_Email', type = str, required=True)
 enroll_parser.add_argument('User_Password', type = str, required=True)
 
+search_parser = reqparse.RequestParser()
+search_parser.add_argument('User_ID', type=int, required=True)
+search_parser.add_argument('History_Keyword', type=str, required=True)
+
+coupon_parser = reqparse.RequestParser()
+coupon_parser.add_argument('User_ID', type=int, required=True)
 
 #開一個新的區域
 user_ns = api.namespace('User', description='使用者api')
@@ -123,9 +129,6 @@ class Enroll(Resource):
         else:
             return {"error": "Unable to connect to the database"}, 500
 
-search_parser = reqparse.RequestParser()
-search_parser.add_argument('User_ID', type=int, required=True)
-search_parser.add_argument('History_Keyword', type=str, required=True)
 
 def get_max_history_id(connection):
     cursor = connection.cursor()
@@ -184,5 +187,41 @@ class SearchKeyword(Resource):
         else:
             return {"error": "Unable to connect to the database"}, 500
         
+def get_coupon(connection):
+    cursor = connection.cursor()
+    cursor.execute("SELECT Coupon_ID FROM `coupon`")
+    result = cursor.fetchone()
+    coupon = result
+    cursor.close()
+    return coupon
+
+@user_ns.route('/coupon')
+class Coupon(Resource):
+    @user_ns.expect(coupon_parser)
+    def get(self):
+        args = coupon_parser.parse_args()
+        User_ID = args['User_ID']
+
+        connection = create_db_connection()
+        if connection is not None:
+            try:
+                cursor = connection.cursor(dictionary=True)
+                sql = "SELECT * FROM COUPON WHERE User_Name = %s"
+                cursor.execute(sql, (User_ID))
+                coupons = cursor.fetchall()
+                if coupons:
+                    return coupons, 200
+                else:
+                    return {"error": "Coupon not found"}, 404
+            except Error as e:
+                return {"error": str(e)}, 500
+            finally:
+                cursor.close()
+                connection.close()
+        else:
+            return {"error": "Unable to connect to the database"}, 500
+
+
+
 if __name__ == '__main__':
     app.run(debug=True)
