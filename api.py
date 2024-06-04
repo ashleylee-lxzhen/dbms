@@ -54,6 +54,10 @@ comment_parser.add_argument('Hairsalon_ID', type=int, required=True)
 comment_parser.add_argument('Score', type=int, required =True)
 comment_parser.add_argument('Comment', type=str, required =False)
 
+favourite_parser = reqparse.RequestParser()
+favourite_parser.add_argument('User_ID', type=int, required=True)
+favourite_parser.add_argument('Favourite_ID', type=int, reqired=True)
+
 
 
 #開一個新的區域
@@ -274,6 +278,7 @@ def get_max_comment_id(connection):
     max_id = result[0] if result[0] is not None else 0
     cursor.close()
     return max_id
+
 @user_ns.route('/comment')
 class Comment(Resource):
     @user_ns.expect(comment_parser)
@@ -306,6 +311,47 @@ class Comment(Resource):
                 connection.close()
         else:
             return {"error": "Unable to connect to the database"}, 500
+
+def get_max_favourite_id(connection):
+    cursor = connection.cursor()
+    cursor.execute("SELECT MAX(Favourite_id) FROM `Favourite`")
+    result = cursor.fetchone()
+    max_id = result[0] if result[0] is not None else 0
+    cursor.close()
+    return max_id
+
+@user_ns.route('/favourite')
+class Favourite(Resource):
+    @user_ns.expect(favourite_parser)
+    def post(self):
+        args = favourite_parser.parse_args()
+        User_ID = args['User_ID']
+        Favourite_ID = args['Favourite_ID']
+
+        connection = create_db_connection()
+        if connection is not None:
+            try:
+                cursor = connection.cursor(dictionary=True)
+                new_favourite_id = get_max_favourite_id(connection) + 1
+                print('new_favourite_id: ' + str(new_favourite_id))
+                
+                sql_favourite = "INSERT INTO `Favourite`(`favourite_id`, `User_ID`)VALUES (%s, %s)"
+                cursor.execute(sql_favourite, (new_favourite_id, User_ID))
+                connection.commit()
+
+                return {
+                    "comment_id": new_favourite_id
+                }, 200
+            except Error as e:
+                return {"error": str(e)}, 500
+            finally:
+                cursor.close()
+                connection.close()
+        else:
+            return {"error": "Unable to connect to the database"}, 500
+
+
+
 
 
 
