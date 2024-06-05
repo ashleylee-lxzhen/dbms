@@ -223,6 +223,7 @@ def get_coupon(connection):
 class Coupon(Resource):
     @user_ns.expect(coupon_parser)
     def get(self):
+        '''查看優惠券'''
         args = coupon_parser.parse_args()
         User_ID = args['User_ID']
 
@@ -252,6 +253,7 @@ class Coupon(Resource):
 class SearchDesigner(Resource):
     @user_ns.expect(designer_search_parser)
     def get(self):
+        '''用設計師id或name搜尋設計師'''
         args = designer_search_parser.parse_args()
         Designer_ID = args.get('Designer_ID')
         Designer_Name = args.get('Designer_Name')
@@ -335,6 +337,7 @@ def get_max_favourite_id(connection):
 class Favourite(Resource):
     @user_ns.expect(favourite_parser)
     def post(self):
+        '''添加salon和設計師到收藏(最愛)'''
         args = favourite_parser.parse_args()
         Favourite_ID = args['Favourite_ID']
         User_ID = args['User_ID']
@@ -373,6 +376,7 @@ def get_max_keyword_id(connection):
 class Default(Resource):
     @user_ns.expect(default_parser)
     def get(self):
+        '''預設搜尋關鍵字'''
         args = default_parser.parse_args()
         User_ID = args['User_ID']
 
