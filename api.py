@@ -114,9 +114,9 @@ class Login(Resource):
                 cursor.execute(sql, (User_Name, User_Password))
                 user = cursor.fetchone()
                 if user:
-                    return user, 200
+                    return {"Response": "Login Successfully"}, 200
                 else:
-                    return {"error": "User not found"}, 404
+                    return {"error": "User or Password is incorrect"}, 404
             except Error as e:
                 return {"error": str(e)}, 500
             finally:
