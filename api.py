@@ -61,7 +61,6 @@ favourite_parser.add_argument('Favourite_ID', type=int, required=True)
 
 default_parser = reqparse.RequestParser()
 default_parser.add_argument('User_ID', type=int, required=True)
-default_parser.add_argument('Keyword_ID', type=int, required=True)
 
 
 
@@ -374,22 +373,20 @@ class Default(Resource):
     def get(self):
         args = default_parser.parse_args()
         User_ID = args['User_ID']
-        Keyword_ID = args['Keyword_ID']
 
         connection = create_db_connection()
         if connection is not None:
             try:
                 cursor = connection.cursor(dictionary=True)
-                new_keyword_id = get_max_keyword_id(connection) + 1
-                print('new_keyword_id: ' + str(new_keyword_id))
                 
-                sql_default = "SELECT * FROM Default_Keyword WHERE User_ID = %s"
-                cursor.execute(sql_default, (User_ID))
-                connection.commit()
+                sql_default = "SELECT Default_Keyword FROM Default_Keyword WHERE User_ID = %s"
+                cursor.execute(sql_default, (User_ID,))
+                default = cursor.fetchall()
 
-                return {
-                    "keyword_id": new_keyword_id
-                }, 200
+                if default:
+                    return default, 200
+                else:
+                    return {"message": "No default keywords found"}, 404
             except Error as e:
                 return {"error": str(e)}, 500
             finally:
@@ -397,6 +394,7 @@ class Default(Resource):
                 connection.close()
         else:
             return {"error": "Unable to connect to the database"}, 500
+
 
 
 
