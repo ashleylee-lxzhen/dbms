@@ -4,6 +4,7 @@ import mysql.connector
 from mysql.connector import Error
 import os
 from dotenv import load_dotenv
+from datetime import date
 
 app = Flask(__name__)
 api = Api(app, version=1.0, title='DBMS api')
@@ -51,12 +52,18 @@ designer_search_parser.add_argument('Designer_Name', type=str, required=False)
 comment_parser = reqparse.RequestParser()
 comment_parser.add_argument('User_ID', type=int, required=True)
 comment_parser.add_argument('Hairsalon_ID', type=int, required=True)
-comment_parser.add_argument('Score', type=int, required =True)
+comment_parser.add_argument('Score', type=float, required =True)
 comment_parser.add_argument('Comment', type=str, required =False)
 
 favourite_parser = reqparse.RequestParser()
 favourite_parser.add_argument('User_ID', type=int, required=True)
-favourite_parser.add_argument('Favourite_ID', type=int, reqired=True)
+favourite_parser.add_argument('Favourite_ID', type=int, required=True)
+
+default_parser = reqparse.RequestParser()
+default_parser.add_argument('User_ID', type=int, required=True)
+default_parser.add_argument('Keyword_ID', type=int, required=True)
+
+
 
 
 
@@ -222,9 +229,12 @@ class Coupon(Resource):
         if connection is not None:
             try:
                 cursor = connection.cursor(dictionary=True)
-                sql = "SELECT * FROM COUPON WHERE User_Name = %s"
-                cursor.execute(sql, (User_ID))
+                sql = "SELECT * FROM Coupon WHERE User_ID = %s"
+                cursor.execute(sql, (User_ID,))
                 coupons = cursor.fetchall()
+                for coupon in coupons:
+                    if isinstance(coupon['Coupon_ExpirationDate'], date):
+                        coupon['Coupon_ExpirationDate'] = coupon['Coupon_ExpirationDate'].strftime('%Y-%m-%d')
                 if coupons:
                     return coupons, 200
                 else:
@@ -273,7 +283,7 @@ class SearchDesigner(Resource):
 
 def get_max_comment_id(connection):
     cursor = connection.cursor()
-    cursor.execute("SELECT MAX(comment_id) FROM `Comments`")
+    cursor.execute("SELECT MAX(comment_id) FROM `Comment`")
     result = cursor.fetchone()
     max_id = result[0] if result[0] is not None else 0
     cursor.close()
@@ -297,7 +307,7 @@ class Comment(Resource):
                 new_comment_id = get_max_comment_id(connection) + 1
                 print('new_comment_id: ' + str(new_comment_id))
                 
-                sql_comment = "INSERT INTO `Comments`(`comment_id`, `User_ID`, `Hairsalon_ID`, `Score`, `Comment`)VALUES (%s, %s, %s, %s, %s)"
+                sql_comment = "INSERT INTO `Comment`(`comment_id`, `User_ID`, `Hairsalon_ID`, `Score`, `Comment`)VALUES (%s, %s, %s, %s, %s)"
                 cursor.execute(sql_comment, (new_comment_id, User_ID, Hairsalon_ID, Score, Comment))
                 connection.commit()
 
@@ -340,7 +350,45 @@ class Favourite(Resource):
                 connection.commit()
 
                 return {
-                    "comment_id": new_favourite_id
+                    "favourite_id": new_favourite_id
+                }, 200
+            except Error as e:
+                return {"error": str(e)}, 500
+            finally:
+                cursor.close()
+                connection.close()
+        else:
+            return {"error": "Unable to connect to the database"}, 500
+
+def get_max_keyword_id(connection):
+    cursor = connection.cursor()
+    cursor.execute("SELECT MAX(Keyword_id) FROM `Default_Keyword`")
+    result = cursor.fetchone()
+    max_id = result[0] if result[0] is not None else 0
+    cursor.close()
+    return max_id
+
+@user_ns.route('/default')
+class Default(Resource):
+    @user_ns.expect(default_parser)
+    def get(self):
+        args = default_parser.parse_args()
+        User_ID = args['User_ID']
+        Keyword_ID = args['Keyword_ID']
+
+        connection = create_db_connection()
+        if connection is not None:
+            try:
+                cursor = connection.cursor(dictionary=True)
+                new_keyword_id = get_max_keyword_id(connection) + 1
+                print('new_keyword_id: ' + str(new_keyword_id))
+                
+                sql_default = "SELECT * FROM Default_Keyword WHERE User_ID = %s"
+                cursor.execute(sql_default, (User_ID))
+                connection.commit()
+
+                return {
+                    "keyword_id": new_keyword_id
                 }, 200
             except Error as e:
                 return {"error": str(e)}, 500
