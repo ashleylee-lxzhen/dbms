@@ -58,6 +58,8 @@ comment_parser.add_argument('Comment', type=str, required =False)
 favourite_parser = reqparse.RequestParser()
 favourite_parser.add_argument('User_ID', type=int, required=True)
 favourite_parser.add_argument('Favourite_ID', type=int, required=True)
+favourite_parser.add_argument('Designer_ID', type=int, required=True)
+favourite_parser.add_argument('Hairsalon_ID', type=int, required=True)
 
 default_parser = reqparse.RequestParser()
 default_parser.add_argument('User_ID', type=int, required=True)
@@ -334,8 +336,10 @@ class Favourite(Resource):
     @user_ns.expect(favourite_parser)
     def post(self):
         args = favourite_parser.parse_args()
-        User_ID = args['User_ID']
         Favourite_ID = args['Favourite_ID']
+        User_ID = args['User_ID']
+        Designer_ID = args['Designer_ID']
+        Hairsalon_ID = args['Hairsalon_ID']
 
         connection = create_db_connection()
         if connection is not None:
@@ -344,13 +348,11 @@ class Favourite(Resource):
                 new_favourite_id = get_max_favourite_id(connection) + 1
                 print('new_favourite_id: ' + str(new_favourite_id))
                 
-                sql_favourite = "INSERT INTO `Favourite`(`favourite_id`, `User_ID`)VALUES (%s, %s)"
-                cursor.execute(sql_favourite, (new_favourite_id, User_ID))
+                sql_favourite = "INSERT INTO `Favourite`(`favourite_id`, `User_ID`, `Designer_id`, `Hairsalon_ID`)VALUES (%s, %s, %s, %s)"
+                cursor.execute(sql_favourite, (new_favourite_id, User_ID, Designer_ID, Hairsalon_ID))
                 connection.commit()
 
-                return {
-                    "favourite_id": new_favourite_id
-                }, 200
+                return 200
             except Error as e:
                 return {"error": str(e)}, 500
             finally:
